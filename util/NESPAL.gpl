@@ -1,0 +1,8 @@
+GIMP Palette
+Name: NESPAL
+Columns: 16
+#
+  0   0   0	#0
+ 57  57  57	#1
+126 126 126	#2
+255 255 255	#3

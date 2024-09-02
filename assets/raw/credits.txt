@@ -1,0 +1,4 @@
+Character sprite:
+    - Author: Ctskelgysth Inauaruat (ctske)
+    - Url: https://opengameart.org/content/tricolor-nes-rpg-character-sprite-sheets
+    - License: CC-BY 4.0

@@ -1,0 +1,7 @@
+build/*
+data/*
+memmap.txt
+*.nes
+*.dbg
+*.chr
+*.fdb

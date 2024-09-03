@@ -24,10 +24,10 @@ def apply_pal(image):
     if image.mode != "RGB":
         image = image.convert("RGB")
 
-    # Convert the image to grayscale manually with a more controlled approach
+    # Convert the image to grayscale initially
     grayscale = image.convert("L")
 
-    # Map grayscale image to 4 colour palette
+    # Map grayscale image to 4 colour palette with a more controlled palette.
     def map_to_palette(value):
         if value < 33:
             return pal[0]

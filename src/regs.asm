@@ -41,16 +41,16 @@ NOISECNTR = $400F
 DMCCTRL = $4010
 
 ; Mapper MM1 registers
-MAPREG0 = $9FFF ; Use for MMC states. 
+MAPPER_CTRL = $9FFF ; Use for MMC states. 
                 ; Bit 0 = vert/horiz mirroring. 
                 ; Bit 1 = one screen / HV mirroring
                 ; Bit 2 = high / low PRG rom switching
                 ; Bit 3 = 32KB/16KB PRG-ROM bank switching modes.
                 ; Bit 4 = 8KB/4KB CHR-ROM mode.
 
-MAPREG1 = $BFFF ; Use for CHR-ROM banks
-MAPREG2 = $DFFF ; Use for CHR-ROM banks
-MAPREG3 = $FFF9 ; Use to swap PRG-ROM banks
+MAPPER_CHR0 = $BFFF ; Use for CHR-ROM banks
+MAPPER_CHR1 = $DFFF ; Use for CHR-ROM banks
+MAPPER_PRG = $FFF9 ; Use to swap PRG-ROM banks
 
 ; Buttons
 BUTTON_A      = 1 << 7

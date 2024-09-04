@@ -1,8 +1,8 @@
 .segment "HEADER" ; Header for emulators
     .byte $4E, $45, $53, $1A  ; Magic num
-    .byte $02                ; 2x 16KB PRG ROM (32KB)
+    .byte $08                ; 4x 16KB PRG ROM (64KB)
     .byte $01                ; CHR ROM
-    .byte %00000001          ; vertical mirror, no mapper
+    .byte $13                ; vertical mirror, mmc1, battery backed WRAM 00010001
     .byte $00                ; 
 
 .segment "VECTORS"
@@ -25,8 +25,21 @@ reset:
     stx $2001 ; Disable rendering by setting PPUMASK to 0
     stx DMCCTRL ; Disable DMC by setting (DMCCTRL) in APU to 0.
 
-    bit $2002 ; Clear PPUSTATUS vblank state bit.
+    ; Init MMC1 mapper.
+    ; Set fixed bank to $C000. Vertical mirror mode. 8KB CHR ROM bank switch.
+    lda #$0E 
+    sta $8000
+    lsr a
+    sta $8000
+    lsr a
+    sta $8000
+    lsr a
+    sta $8000
+    lsr a
+    sta $8000
 
+    ; Wait for V-blank
+    bit $2002 ; Clear PPUSTATUS vblank state bit.
 @vblankwait:
     bit $2002 ;
     bpl @vblankwait

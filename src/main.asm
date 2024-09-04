@@ -1,8 +1,6 @@
 .include "regs.asm"
 .include "init.asm"
 
-.include "joy.asm"
-
 .segment "ZEROPAGE"
 frame_counter: .res 1, 0
 buttons: .res 1, 0
@@ -23,7 +21,12 @@ ppu_state: .res 1 ; Track changes to $2000 (PPUCTRL)
 
     game_state: .res 1
 
-.segment "RODATA"
+    temp: .res 1
+
+.segment "BANK_FIXED"
+
+.include "joy.asm"
+.include "mapper.asm"
 
 ; Static palette
 palette:
@@ -36,12 +39,12 @@ message:
 message_len:
     .byte $0B
 
-.segment "CODE"
-
 ;------------------------------
 ; Entry point
 ;------------------------------
 .proc main
+
+    ;jsr Mapper::Init
 
     jsr LoadPalette    ; Load in palette
     jsr ClearNametable ; Fully clear the nametable.
@@ -59,6 +62,14 @@ message_len:
     lda #$0
     sta player_x
     sta player_y
+
+    ; Switch to bank #1
+    lda #01
+    jsr Mapper::SetPRGBank
+
+    lda tablex ; Since tablex is in the same position as tabley. we should get AA and NOT FA as the banks have been swapped out.
+    sta temp   ; Not the best idea to be referencing from inactive banks but illustrates it working.
+
 
 mainloop: ; Infinite loop
 
@@ -367,3 +378,13 @@ mainloop: ; Infinite loop
 	
 	rts
 .endproc
+
+.segment "BANK_00"
+
+tablex:
+    .byte $FA, $FF, $FF, $FF, $FF, $FF, $FF, $FA, $FA, $FA
+
+.segment "BANK_01"
+
+tabley:
+    .byte $AA, $AA, $AA, $AA, $AF

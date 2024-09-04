@@ -11,11 +11,12 @@ ASSETS_DIR := assets
 DATA_DIR := data
 CHRROM := tiles.chr
 
-ASFLAGS := -g
+ASFLAGS := -g --create-dep $(BUILD_DIR)/main.d
 LDFLAGS := -g -C nes-mmc1.cfg -m memmap.txt -Wl --dbgfile,$(ROMNAME).dbg
 
 SRC := $(SRC_DIR)/main.asm
-OBJS := $(patsubst $(SRC_DIR)/%.asm,$(BUILD_DIR)/%.o,$(SRC))
+DEPS := $(BUILD_DIR)/main.d
+OBJS := $(BUILD_DIR)/main.o
 
 .PHONY: clean
 .PHONY: run
@@ -23,7 +24,7 @@ OBJS := $(patsubst $(SRC_DIR)/%.asm,$(BUILD_DIR)/%.o,$(SRC))
 all: $(ROMNAME).nes
 
 # Final ROM link
-$(ROMNAME).nes: $(DATA_DIR)/$(CHRROM) $(BUILD_DIR)/main.o
+$(ROMNAME).nes: $(DATA_DIR)/$(CHRROM) $(OBJS)
 	$(LD) $(LDFLAGS) -o $@ $(OBJS)
 
 # Generate tile chr from tiles.bmp in assets.
@@ -31,7 +32,7 @@ $(DATA_DIR)/$(CHRROM): $(ASSETS_DIR)/tiles.bmp | $(DATA_DIR)
 	$(BMP2CHR) $(DATA_DIR)/$(CHRROM) $(ASSETS_DIR)/tiles.bmp
 
 # Assemble sources
-$(BUILD_DIR)/%.o: $(SRC_DIR)/%.asm | $(BUILD_DIR)
+$(BUILD_DIR)/main.o: $(SRC) | $(BUILD_DIR)
 	$(AS) $(ASFLAGS) -o $@ $<
 
 # Make build folder
@@ -42,6 +43,7 @@ $(BUILD_DIR):
 $(DATA_DIR):
 	mkdir -p $(DATA_DIR)
 
+-include $(DEPS)
 
 run: $(ROMNAME).nes
 	$(EMULATOR) $(ROMNAME).nes

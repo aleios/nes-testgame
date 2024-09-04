@@ -31,7 +31,7 @@ ppu_state: .res 1 ; Track changes to $2000 (PPUCTRL)
 ; Static palette
 palette:
 	.byte $0F,$00,$10,$30, $0F,$00,$10,$30, $0F,$00,$10,$30, $0F,$00,$10,$30 ; BG palettes
-	.byte $0F,$00,$10,$30, $0F,$00,$10,$30, $0F,$00,$10,$30, $0F,$00,$10,$30 ; Sprite palettes
+	.byte $0F,$07,$25,$37, $0F,$00,$10,$30, $0F,$00,$10,$30, $0F,$00,$10,$30 ; Sprite palettes
 
 ; Hello, world message
 message:
@@ -176,6 +176,15 @@ mainloop: ; Infinite loop
 ; TODO: Push sprites rather than fixed location in OAM.
 .proc UpdateShadowOAM
 
+    ; Byte 0 = Y-value
+    ; Byte 1 = Tile index. 8x8 mode.
+    ; Byte 2 = Attribs. 76543210
+    ;                   ++*---^^
+    ; + = mirror bits
+    ; * = priority
+    ; ^ = palette index
+    ; Byte 3 = X-value
+
     ; Player sprite top-left
     lda #108 ; Y-value
     sta $200
@@ -190,6 +199,7 @@ mainloop: ; Infinite loop
     sta $204
     lda #1
     sta $205
+    lda #0
     sta $206
     lda #124
     sta $207
@@ -199,6 +209,7 @@ mainloop: ; Infinite loop
     sta $208
     lda #2
     sta $209
+    lda #0
     sta $20A
     lda #116
     sta $20B
@@ -208,6 +219,7 @@ mainloop: ; Infinite loop
     sta $20C
     lda #3
     sta $20D
+    lda #0
     sta $20E
     lda #124
     sta $20F

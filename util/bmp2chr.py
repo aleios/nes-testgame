@@ -6,8 +6,45 @@ CHR_ROM_SIZE = 8192  # 8KB for NES CHR ROM
 TILE_SIZE = 16       # Each tile is 16 bytes (8x8 pixels, 2 bpp)
 PAGE_SIZE = 4096     # Each page is 4KB
 
+def apply_pal(image):
+
+    # Palette map
+    pal = [
+        0, 0, 0,       # Black
+        57, 57, 57,    # Dark gray
+        126, 126, 126, # Medium gray
+        255, 255, 255  # White
+    ]
+
+    # Create an indexed image with the specified palette
+    palette_img = Image.new("P", (1, 1))
+    palette_img.putpalette(pal)
+
+    # Ensure the image is in RGB mode before converting to grayscale
+    if image.mode != "RGB":
+        image = image.convert("RGB")
+
+    # Convert the image to grayscale initially
+    grayscale = image.convert("L")
+
+    # Map grayscale image to 4 colour palette with a more controlled palette.
+    def map_to_palette(value):
+        if value < 33:
+            return pal[0]
+        elif value < 124:
+            return pal[3]
+        elif value < 186:
+            return pal[6]
+        else:
+            return pal[9]
+
+    # Apply the mapping to each pixel
+    indexed_data = grayscale.point(map_to_palette)
+    return indexed_data
+
 def bmp_to_chr(img, split_vertical=True):
-    img = img.convert('P')  # Ensure image is in indexed mode
+
+    img = apply_pal(img)
     width, height = img.size
 
     # Sanity check for image size.

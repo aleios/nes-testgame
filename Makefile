@@ -12,7 +12,7 @@ DATA_DIR := data
 CHRROM := tiles.chr
 
 ASFLAGS := -g --create-dep $(BUILD_DIR)/main.d
-LDFLAGS := -g -C nes-mmc1.cfg -m memmap.txt -Wl --dbgfile,$(ROMNAME).dbg
+LDFLAGS := -g -C nes-nrom.cfg -m memmap.txt -Wl --dbgfile,$(ROMNAME).dbg
 
 SRC := $(SRC_DIR)/main.asm
 DEPS := $(BUILD_DIR)/main.d

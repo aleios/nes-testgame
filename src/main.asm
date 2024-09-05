@@ -4,6 +4,13 @@
 .include "joy.asm"
 
 .segment "ZEROPAGE"
+; Locals/temporaries
+temp_0: .res 1
+temp_1: .res 1
+temp_2: .res 1
+temp_3: .res 1
+
+; Button tracking
 frame_counter: .res 1, 0
 buttons: .res 1, 0
 last_buttons: .res 1, 0
@@ -15,6 +22,7 @@ player_y: .res 1
 facing_dir: .res 1
 
 ppu_state: .res 1 ; Track changes to $2000 (PPUCTRL)
+current_sprite_index: .res 1
 
 .segment "CHR"
 	.incbin "../data/tiles.chr"
@@ -60,11 +68,16 @@ message_len:
     sta player_x
     sta player_y
 
-mainloop: ; Infinite loop
+    ; Face down initially.
+    lda #$04
+    sta facing_dir
 
+mainloop: ; Infinite loop
+    
+    jsr ClearShadowOAM
     jsr Joypad::Poll
     jsr CheckPlayerMove
-    jsr UpdateShadowOAM
+    jsr PushCharaToShadowOAM
 
     lda frame_counter
 @waitForNMI: ; Spin until next frame.
@@ -132,6 +145,11 @@ mainloop: ; Infinite loop
 ;------------------------------
 ; Palette
 ;------------------------------
+
+; Desc: Loads palette values into PPU memory.
+; Params: None
+; Returns: None
+; Modifies: PPU memory
 .proc LoadPalette
 
     lda PPUSTATUS ; Enable writing to PPU but reading PPUSTATUS
@@ -162,57 +180,148 @@ mainloop: ; Infinite loop
 ; OAM
 ;------------------------------
 
-; TODO: Push sprites rather than fixed location in OAM.
-.proc UpdateShadowOAM
+; Shamelessly yoinked as solves the same problem.
+; Table of offsets based on the combination of buttons pressed. Maps to the lut_CharaSpriteTable below.
+; Works out so that horizontal directions take priority over vertical.
+lut_FacingMode:
+  .BYTE $00,$00,$10,$00,$30,$00,$10,$00,$20,$00,$10,$00,$30,$00,$10,$00
 
-    ; Byte 0 = Y-value
-    ; Byte 1 = Tile index. 8x8 mode.
-    ; Byte 2 = Attribs. 76543210
-    ;                   ++*---^^
-    ; + = mirror bits
-    ; * = priority
-    ; ^ = palette index
-    ; Byte 3 = X-value
+; 2 bytes per sprite. Tile ID and Attributes
+; Each character metasprite is 4 sprites. UL, UR, DL, DR
+; So each animation frame is 8 bytes.
+; 64 bytes total.
+lut_CharaSpriteTable:
+    ; 0x00
+    .byte $09,$40, $08,$40, $0B,$40, $0A,$40 ; Right frame 0
+    .byte $0D,$40, $0C,$40, $0F,$40, $0E,$40 ; Right frame 1
 
-    ; Player sprite top-left
-    lda #108 ; Y-value
-    sta $200
-    lda #0
-    sta $201
-    sta $202
-    lda #116 ; X-value
-    sta $203
+    ; 0x10
+    .byte $08,$00, $09,$00, $0A,$00, $0B,$00 ; Left frame 0
+    .byte $0C,$00, $0D,$00, $0E,$00, $0F,$00 ; Left frame 1
 
-    ; Player sprite top-right
-    lda #108
-    sta $204
-    lda #1
-    sta $205
-    lda #0
-    sta $206
-    lda #124
-    sta $207
+    ; 0x20
+    .byte $04,$00, $05,$00, $06,$00, $07,$00 ; Up frame 0
+    .byte $05,$40, $04,$40, $07,$40, $06,$40 ; Up frame 1
 
-    ; player sprite bottom-left
+    ; 0x30
+    .byte $00,$00, $01,$00, $02,$00, $03,$00 ; Down frame 0
+    .byte $00,$00, $01,$00, $03,$40, $02,$40 ; Down frame 1
+
+; Desc: Pushes a 4x4 metasprite to Shadow OAM.
+; Params:
+;   A - Frame counter
+;   temp_0 - Low byte of sprite table
+;   temp_1 - High byte of sprite table
+;   temp_2 - X position
+;   temp_3 - Y position
+; Returns: none
+; Modifies: current_sprite_index
+; TODO: Move fixed logic outside this function. Provide the params so can be used in generic way.
+.proc PushCharaToShadowOAM
+
+    and #$08
+    
+    ; Get the facing direction
+    ldx facing_dir
+    ora lut_FacingMode, x
+    sta temp_0
+
+    lda #<lut_CharaSpriteTable
+    clc
+    adc temp_0
+    sta temp_0 ; Low byte of chara-table address
+
+    lda #>lut_CharaSpriteTable
+    adc #0
+    sta temp_1 ; High byte of chara-table address
+
+    ; Offset at current_sprite_index bytes.
+    ldx current_sprite_index
+
+    ; Set Y-positions of the metasprite. UL, UR, BL, BR
+    lda #108 ; Player start at Y-108
+    sta OAM_OFFSET+$00, x
+    sta OAM_OFFSET+$04, x
+    clc
+    adc #$08
+    sta OAM_OFFSET+$08, x
+    sta OAM_OFFSET+$0c, x
+
+    ; Set X-positions of the metasprite. UL, BL, UR, BR
     lda #116
-    sta $208
-    lda #2
-    sta $209
-    lda #0
-    sta $20A
-    lda #116
-    sta $20B
+    sta OAM_OFFSET+$03, x
+    sta OAM_OFFSET+$0B, x
+    clc
+    adc #$08
+    sta OAM_OFFSET+$07, x
+    sta OAM_OFFSET+$0F, x
 
-    ; player sprite bottom-right
-    lda #116
-    sta $20C
-    lda #3
-    sta $20D
-    lda #0
-    sta $20E
-    lda #124
-    sta $20F
+    ; Find and set tile indices and attributes for sprites.
+    ldy #0
 
+    ; UL
+    lda (temp_0), y
+    iny
+    sta OAM_OFFSET+$01, x
+    lda (temp_0), y
+    iny
+    sta OAM_OFFSET+$02, x
+
+    ; UR
+    lda (temp_0), y
+    iny
+    sta OAM_OFFSET+$05, x
+    lda (temp_0), y
+    iny
+    sta OAM_OFFSET+$06, x
+
+    ; BL
+    lda (temp_0), y
+    iny
+    sta OAM_OFFSET+$09, x
+    lda (temp_0), y
+    iny
+    sta OAM_OFFSET+$0A, x
+
+    ; BR
+    lda (temp_0), y
+    iny
+    sta OAM_OFFSET+$0D, x
+    lda (temp_0), y
+    iny
+    sta OAM_OFFSET+$0E, x
+
+
+    ; Increment sprite index by 16bytes. 4 bytes per OAM entry with 4 entries per metasprite.
+    lda current_sprite_index
+    clc
+    adc #$10
+    sta current_sprite_index
+    rts
+
+.endproc
+
+; Desc: Clears Shadow OAM values to 0xFE. Effectively hiding the sprites.
+; Params: None
+; Returns: None
+; Modifies: current_sprite_index
+.proc ClearShadowOAM
+
+    ; Loop over all 64 sprites and clear them to $FE similar to init.
+    ldx #$3F
+    lda #$FE
+
+    @loop:
+        sta $0200, x
+        sta $0240, x
+        sta $0280, x
+        sta $02C0, x
+        dex 
+        bpl @loop ; Loop until reached end.
+
+    ; Reset current sprite index back to 0.
+    lda #0
+    sta current_sprite_index
     rts
 .endproc
 
@@ -220,6 +329,10 @@ mainloop: ; Infinite loop
 ; Nametable
 ;------------------------------
 
+; Desc: Fully clears nametable 1 to 0x0 including attribute table.
+; Params: None
+; Returns: None
+; Modifies: PPU memory
 .proc ClearNametable
 
     lda PPUSTATUS ; Trigger address latch on PPU
@@ -249,6 +362,10 @@ mainloop: ; Infinite loop
     rts
 .endproc
 
+; Desc: Fully clears nametable 2 to 0x0 including attribute table.
+; Params: None
+; Returns: None
+; Modifies: PPU memory
 .proc ClearNametable2
 
     lda PPUSTATUS ; Trigger address latch on PPU
@@ -278,6 +395,10 @@ mainloop: ; Infinite loop
     rts
 .endproc
 
+; Desc: Commit new scroll values on the PPU
+; Params: None
+; Returns: None
+; Modifies: PPU registers
 .proc UpdateScroll
     lda player_x ; TODO: Switch scroll to using tile based. Arithmatic shift left to get the final scroll value.
     sta PPUSCROLL
@@ -292,19 +413,20 @@ mainloop: ; Infinite loop
 
 .endproc
 
+; Desc: Checks the current button state and if the player character is moving.
+; Params: None
+; Returns: None
+; Modifies: facing_dir, player_x, player_y, ppu_state
 .proc CheckPlayerMove
-    lda #14
-    asl a
-    asl a
-    asl a
-    asl a
-
-
     ; Check buttons and mask the dpad bits.
     lda buttons
     and #$0F
+    bne @doMovement
+    rts
 
     ; Cycle through each dpad case until we get a match.
+@doMovement:
+    sta facing_dir
     lsr a
     bcs @right
     lsr a
@@ -322,6 +444,7 @@ mainloop: ; Infinite loop
 @right:
     inc player_x
     beq @flipnametable ; Check if we wrapped around to $00 from $FF. If we did then flip the nametable.
+    lda player_x ; TODO: Remove. Anim counter should be its own thing instead of relying on fallthrough.
     rts
 @left:
     lda player_x

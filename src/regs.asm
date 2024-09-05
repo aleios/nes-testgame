@@ -61,3 +61,6 @@ BUTTON_UP     = 1 << 3
 BUTTON_DOWN   = 1 << 2
 BUTTON_LEFT   = 1 << 1
 BUTTON_RIGHT  = 1 << 0
+
+; Offsets
+OAM_OFFSET = $200

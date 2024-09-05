@@ -1,4 +1,14 @@
-Character sprite:
+Finalized Assets:
+
+Character sprites:
+    - Author:
+    - Url: https://tmpelay.itch.io/top-down-characters-gameboy-style
+    - License: CC0 1.0 Universal
+
+
+Previous Assets:
+
+Character sprites:
     - Author: Ctskelgysth Inauaruat (ctske)
     - Url: https://opengameart.org/content/tricolor-nes-rpg-character-sprite-sheets
     - License: CC-BY 4.0
